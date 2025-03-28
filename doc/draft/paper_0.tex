@@ -1,0 +1,240 @@
+\documentclass{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+% \usepackage{natbib} % Or whichever bibliography style preferred
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{remark}[theorem]{Remark}
+
+% Basic math operators
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\lexmax}{lex\,max}
+
+% Placeholder for author and date
+\title{Weighted Entropy Equilibrium: A Unique Refinement for Zero-Sum Games}
+\author{User Name \\ {\small Based on conversations with Google Gemini}} % Adjust as appropriate
+\date{March 28, 2025}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+The classical minimax theorem for two-player zero-sum games guarantees the existence of a value and optimal strategies, but these strategies are often non-unique. This necessitates equilibrium refinement concepts to select among optimal strategies. We propose a novel refinement based on lexicographical preference, using the primary game outcome `P` and a secondary objective `T_w` derived from Shannon entropy. Specifically, `T_w` represents a weighted balance of players' move entropies (`T_A = w_A ΣH(A) - w_B ΣH(B)`), allowing for asymmetry. We define the Weighted Entropy Equilibrium (WEE) for finite extensive form games with perfect information. We prove that WEE exists and is unique, computable via backward induction. The uniqueness stems from the strict concavity of the weighted entropy term used for tie-breaking. We show that the optimal strategy's tie-breaking distributions follow a softmax/Gibbs structure, where the weights act as inverse temperatures. Furthermore, we establish that WEE is the `ε -> 0+` limit of the Nash equilibria in games perturbed with the weighted entropy score (`P + ε T_w`), linking it to standard utility theory and suggesting avenues for extension. This provides a principled and unique tie-breaking mechanism based on the structural properties of strategies.
+\end{abstract}
+
+\section{Introduction}
+
+\subsection{The Equilibrium Selection Problem in Zero-Sum Games}
+Two-player zero-sum games form a cornerstone of game theory. Von Neumann's minimax theorem guarantees a unique value for such games, achievable by optimal strategies \cite{placeholder_vonneumann}. However, multiple strategies for a player may achieve this value, leading to an equilibrium selection problem. Choosing among these optimal strategies often requires secondary objectives or refinement concepts.
+
+\subsection{Motivation for Entropy}
+When multiple moves lead to the same optimal primary outcome, how should a player choose? Randomization (mixed strategies) is one possibility. We propose using Shannon entropy `H(D)` of the chosen move distribution `D` as a basis for a secondary objective. Our motivation stems not from direct physical analogies, but from entropy's mathematical properties as a measure of uncertainty or choice complexity: it is additive for independent choices and invariant under decomposition of the decision process \cite{placeholder_shannon_properties}. This makes it a mathematically natural candidate for evaluating the structure of a behavioral strategy.
+
+\subsection{Weighted Entropy Balance (\texorpdfstring{$T_w$}{Tw})}
+To account for potential asymmetries in games or player preferences regarding unpredictability, we introduce player-specific weights `w_A, w_B > 0`. We define a zero-sum Weighted Entropy Balance score `T_w`, where player A's score is `T_A = w_A Σ H(D_A) - w_B Σ H(D_B)` (summed over moves along the play path). This score forms the secondary component in a lexicographical objective.
+
+\subsection{Contributions and Paper Outline}
+This paper introduces the **Weighted Entropy Equilibrium (WEE)** as the strategy profile selected by lexicographically maximizing `(E[P], E[T_w])` in finite two-player zero-sum games with perfect information. Our main contributions are:
+\begin{itemize}
+    \item Formal definition of the `(P, T_w)` refinement model and WEE.
+    * Proof of existence and uniqueness of WEE via backward induction.
+    * Characterization of the optimal tie-breaking distributions via a softmax structure where weights act as inverse temperatures.
+    * Establishing the connection between WEE and the limit of equilibria in `P + ε T_w` perturbed games.
+\end{itemize}
+*(The informal name "entrolibrium" was used during development and for the associated code repository \cite{placeholder_repo})*.
+The paper is structured as follows: Section 2 covers preliminaries. Section 3 defines the WEE model. Section 4 proves existence and uniqueness. Section 5 analyzes the strategy structure. Section 6 connects WEE to perturbed games. Section 7 discusses computation. Section 8 provides an example. Section 9 discusses interpretations. Section 10 briefly covers related work. Section 11 concludes and outlines future work.
+
+\section{Preliminaries}
+
+\subsection{Game Model}
+We consider finite two-player zero-sum games in extensive form with perfect information (EFG-PI) \cite{placeholder_osborne_rubinstein}. Such a game is defined by a game tree with nodes (histories) `h`, actions `A(h)`, a player function `p(h)`, terminal histories `Z`, and a terminal payoff function `u: Z -> R`. Since the game is zero-sum, `u_B(z) = -u_A(z)`. We denote the primary payoff for player A as `P(z) = u_A(z)`. We focus solely on extensive form games in this work.
+
+\subsection{Equilibrium Concepts}
+A behavioral strategy `σ_i` for player `i` assigns a probability distribution `σ_i(h) = D` over actions `A(h)` for every history `h` where `p(h) = i`. A strategy profile `σ = (σ_A, σ_B)` induces a probability distribution over terminal nodes. A Nash Equilibrium (NE) is a profile `σ*` where neither player can improve their expected payoff by unilaterally changing their strategy. For zero-sum games, NE strategies yield the unique minimax value `v`. Subgame Perfect Equilibrium (SPE) requires the strategy profile to induce a NE in every subgame.
+
+\subsection{Lexicographical Preferences}
+We consider preferences over vector payoffs `(v_1, v_2)`. `(a, b) >_{lex} (c, d)` if `a > c`, or if `a = c` and `b > d`.
+
+\subsection{Shannon Entropy}
+For a probability distribution `D = {p(m)}_{m∈M}` over a finite set `M`, Shannon entropy is `H(D) = - Σ_{m∈M, p(m)>0} p(m) ln(p(m))`, using the convention `0 ln 0 = 0`. `H(D)` is non-negative, maximized by the uniform distribution, and strictly concave \cite{placeholder_cover_thomas}. It also satisfies decomposition invariance (chain rule).
+
+\section{Weighted Entropy Equilibrium (WEE)}
+
+\subsection{The Distribution Game Framework}
+We conceptualize play as occurring in a "distribution game" where at each history `h`, the player `p(h)` chooses a distribution `D = σ_{p(h)}(h)` over `A(h)`.
+
+\subsection{The Weighted Entropy Balance Score (\texorpdfstring{$T_w$}{Tw})}
+Given a full path of play `z = (h_0, a_1, h_1, ..., a_k, h_k=z)` generated by strategies `σ_A, σ_B`, let `D_{A,j}` be the distributions chosen by player A at relevant histories `h_j` on the path, and `D_{B,l}` be those chosen by B. The realized `T_w` score for player A is `T_A(z) = w_A Σ_j H(D_{A,j}) - w_B Σ_l H(D_{B,l})`, where `w_A, w_B > 0` are fixed positive weights. Player B's score is `T_B(z) = -T_A(z)`.
+
+\subsection{The \texorpdfstring{$(P, T_w)$}{(P, Tw)} Lexicographical Objective}
+Each player `i` aims to choose their strategy `σ_i` to lexicographically maximize the expected payoff vector `(E[P_i | σ_A, σ_B], E[T_{w,i} | σ_A, σ_B])`.
+
+\subsection{Formal Definition of WEE}
+A Weighted Entropy Equilibrium (WEE) is a strategy profile `σ* = (σ_A*, σ_B*)` such that for each player `i`, `σ_i*` lexicographically maximizes `(E[P_i], E[T_{w,i}])` given the other player's strategy `σ_j*`.
+
+\section{Existence and Uniqueness}
+
+\subsection{Backward Induction Algorithm}
+WEE can be computed via backward induction on the EFG-PI game tree. For each node `h`, we compute a unique value vector `V(h) = (E[P](h), E[T_w](h))` representing the expected outcome from `h` onwards under WEE play, and the unique optimal distribution `D* = σ_{p(h)}*(h)`.
+\begin{itemize}
+    \item **Terminal Nodes `z`:** `V(z) = (P(z), 0)`.
+    \item **Non-Terminal Node `h` (Player `i` moves):**
+        1. For each action `a ∈ A(h)` leading to successor `h'`, recursively compute `V(h') = (E[P](h'), E[T_w](h'))`. Let `V'(a) = (E_P'(a), E_T'(a))` be this value vector converted to player `i`'s perspective (negating if `i` is minimizing `P` and `T_w` relative to the stored values, e.g., `E_P'(a) = -E[P](h')` if `V` stores values for player A).
+        2. Find `max_P = max_{a ∈ A(h)} E_P'(a)`.
+        3. Identify the set of P-optimal actions `A_opt = {a ∈ A(h) | E_P'(a) = max_P}`.
+        4. Find the unique distribution `D*` over `A_opt` that maximizes the tie-breaking objective `w_i H(D) + Σ_{a∈A_opt} p(a) E_T'(a)`. (Details in Section 5).
+        5. Calculate the resulting maximized tie-breaking value `E_T^* = w_i H(D*) + Σ_{a∈A_opt} p*(a) E_T'(a)`.
+        6. Set `V(h) = (max_P, E_T^*)` (in the canonical perspective, e.g., Player A's) and store `D*` as the strategy at `h`.
+\end{itemize}
+*(A more formal pseudocode can be provided, see Algorithm~\ref{alg:backward_induction} [Placeholder]).*
+
+\subsection{Uniqueness Theorem}
+\begin{theorem} \label{thm:uniqueness}
+For any finite two-player zero-sum game in extensive form with perfect information, and any fixed positive weights `w_A > 0, w_B > 0`, there exists a unique Weighted Entropy Equilibrium (WEE) strategy profile `σ*`, which is computed by the backward induction algorithm described above.
+\end{theorem}
+\begin{proof}[Proof Sketch]
+Existence and computation follow from the backward induction construction, which is well-defined for finite EFG-PIs. Uniqueness at each step is key. Standard backward induction ensures the primary value `E[P]` at each node is uniquely determined (the minimax value). The set `A_opt` of P-optimal actions is identified. The tie-breaking step requires maximizing `f(D) = w_i H(D) + Σ_{a∈A_opt} p(a) E_T'(a)` over distributions `D` supported on `A_opt`. Since `w_i > 0` and `H(D)` is strictly concave, `f(D)` is strictly concave. The domain (probability distributions on `A_opt`) is a compact convex set. A strictly concave function attains its maximum at a unique point over a compact convex set. Thus, the optimal distribution `D*` at each node `h` is unique. This uniqueness propagates up the tree via the backward induction process, defining a unique strategy profile `σ*` and unique value vector `V(root)`. *(Detailed proof deferred, possibly to appendix).*
+\end{proof}
+
+\section{Structure of Optimal Strategies}
+
+\subsection{Tie-Breaking Distribution Form}
+Consider player `i` choosing distribution `D = {p(a)}_{a∈A_opt}` at node `h` to maximize `w_i H(D) + Σ p(a) V_a`, where `V_a = E_T'(a)` is the expected future `T_w` value if action `a` is taken.
+\begin{proposition} \label{prop:softmax}
+The unique optimal distribution `D* = {p*(a)}` maximizing `w_i H(D) + Σ_{a∈A_opt} p(a) V_a` over `a ∈ A_opt` is given by the softmax/Gibbs distribution:
+`p*(a) = exp(V_a / w_i) / Σ_{a'∈A_opt} exp(V_{a'} / w_i)` for `a ∈ A_opt`.
+\end{proposition}
+\begin{proof}[Proof Sketch]
+This can be shown using Lagrange multipliers for the constraint `Σ p(a) = 1`. The derivative of the Lagrangian `L(D, λ) = w_i H(D) + Σ p(a) V_a - λ(Σ p(a) - 1)` with respect to `p(a)` yields `w_i(-ln p(a) - 1) + V_a - λ = 0`. Solving for `p(a)` gives `p(a) ∝ exp(V_a / w_i)`. Normalizing gives the softmax result. *(Detailed derivation deferred).*
+\end{proof}
+
+\subsection{Interpretation of Weights (\texorpdfstring{$w_i$}{wi})}
+Proposition~\ref{prop:softmax} shows that `w_i` acts as an inverse temperature (or `1/w_i` as temperature) in the softmax function.
+\begin{itemize}
+    \item As `w_i -> 0+` (low weight/high inverse temp): The distribution `D*` concentrates probability on the action `a` with the highest future entropy payoff `V_a`.
+    \item As `w_i -> ∞` (high weight/low inverse temp): The distribution `D*` approaches the uniform distribution over `A_opt`.
+\end{itemize}
+Thus, `w_i` quantifies how strongly player `i`'s tie-breaking choice depends on future entropy prospects versus simply maximizing current randomization (`H(D)`).
+
+\section{Connection to Perturbed Games}
+
+\subsection{The \texorpdfstring{$P + ε T_w$}{P + epsilon Tw} Game}
+Consider an auxiliary game `G_ε` which is identical to the original game but has a modified scalar payoff for player A: `P'(z) = P(z) + ε T_w(z)` for some small `ε > 0`. Player B's payoff is `-P'(z)`.
+
+\subsection{Limit Equivalence}
+\begin{theorem} \label{thm:limit}
+Let `σ*(ε)` be a Nash Equilibrium strategy profile for the perturbed game `G_ε`. Then, the limit of `σ*(ε)` as `ε -> 0+` exists and equals the unique Weighted Entropy Equilibrium strategy profile `σ*` of the original game with lexicographical objective `(P, T_w)`.
+\end{theorem}
+\begin{proof}[Proof Sketch]
+This is a standard result for representing lexicographical preferences as limits of weighted sums \cite{placeholder_lexico_limit}. Consider any node `h` in backward induction. For sufficiently small `ε > 0`, any strategy maximizing `E[P] + ε E[T_w]` must first maximize `E[P]`. Among those strategies that maximize `E[P]`, maximizing the sum is equivalent to maximizing `E[T_w]`. Since the backward induction for WEE yields a unique strategy `D*` at each node that performs this lexicographical maximization, the equilibria `σ*(ε)` must converge to `σ*`. *(Detailed proof omitted, relies on continuity arguments or finite game structure).*
+\end{proof}
+
+\subsection{Significance}
+Theorem~\ref{thm:limit} provides an alternative characterization of WEE, connecting it to standard single-objective Nash equilibria in perturbed games. This is particularly relevant for potential extensions to game classes where backward induction is not directly applicable, such as games with imperfect information. Finding equilibria in `G_ε` might be feasible using standard algorithms, and the limit could approximate WEE.
+
+\section{Computational Aspects}
+
+\subsection{Direct Computation for PI Games}
+For finite EFG-PIs, WEE is computable in principle via backward induction (Algorithm~\ref{alg:backward_induction} [Placeholder]). The complexity is dominated by the size of the state space (number of nodes in the game tree/DAG). The calculation at each node involves evaluating successors and computing the optimal distribution `D*`. Due to Proposition~\ref{prop:softmax}, this computation likely avoids generic iterative optimization and reduces to evaluating the softmax function, making the per-node overhead potentially manageable relative to the state-space traversal cost.
+
+\subsection{Sensitivity Analysis}
+The WEE strategy `σ*` depends crucially on the set of P-optimal actions `A_opt` identified at each node. Small changes or perturbations to the primary payoffs `P` could alter this set `A_opt`, potentially leading to significantly different tie-breaking distributions `D*` and thus a different overall WEE. This highlights how factors implicitly represented as small modifications to `P` (e.g., secondary objectives `S` modeled as `P' = P + δS`) could influence the resulting equilibrium.
+
+\section{Example: Tic-Tac-Toe}
+
+*(This section to be kept brief for MVP)*
+We apply the backward induction to Tic-Tac-Toe (3x3 grid).
+\subsection{WEE Calculation}
+The minimax value `E[P]` for Tic-Tac-Toe from the start is 0 (Draw). Backward induction (Section 4.1) is used to compute the `(E[P], E[T_w])` values for all reachable states. For the initial state (empty board), Player X (moving first) considers the 9 possible moves `m=0..8`. Let `s_m` be the state after move `m`. We compute `V(s_m) = (E[P](s_m), E[T_w](s_m))` via recursive calls (value from O's perspective). We then find the value for X making move `m`: `V'(m) = (-E[P](s_m), -E[T_w](s_m))`.
+
+\subsection{Results and Interpretation}
+All 9 initial moves lead to `E[P]=0` under optimal play. Thus, `A_opt = {0, 1, ..., 8}`. The optimal starting distribution `D*` is determined by the softmax function applied to the calculated future entropy values `V_a = -E[T_w](s_a)`:
+`p*(a) = exp(V_a / w_A) / Σ_{a'=0..8} exp(V_{a'} / w_A)`.
+
+Due to Tic-Tac-Toe's symmetries, moves can be grouped: Corners (0, 2, 6, 8), Edges (1, 3, 5, 7), Center (4). We expect the calculated `V_a` values to be identical for moves within the same symmetry group (assuming `w_A=w_B`, or if asymmetry doesn't break the future T symmetry). Let these values be `V_corner`, `V_edge`, `V_center`. The resulting probabilities will also be symmetric. For instance, `p*(corner) = exp(V_corner / w_A) / Z`, where `Z` is the normalization constant.
+
+*(Placeholder: Actual calculation requires implementation. Expect non-uniform probabilities if `V_corner, V_edge, V_center` differ. If they are equal, the result is uniform 1/9. Effect of `w_A != w_B` might be subtle here).*
+
+\section{Discussion}
+
+\subsection{Interpreting WEE}
+WEE provides a unique, parameterised refinement selecting strategies that not only optimize the primary outcome but also balance maximizing own future options/unpredictability (weighted by `w_i`) against minimizing the opponent's (weighted by `w_j`). It offers a potential model for sophisticated tie-breaking in competitive scenarios.
+
+\subsection{Interpreting Weights \texorpdfstring{$w_A, w_B$}{wA, wB}}
+The weights allow flexibility. They could represent inherent asymmetries in the game structure, differing player attitudes towards risk or complexity, or perhaps parameters tuned for practical performance in heuristic settings. Their role as inverse temperatures in the choice probability (Prop.~\ref{prop:softmax}) provides a clear mathematical interpretation.
+
+\subsection{Relation to Other Refinements}
+WEE is distinct from refinements focused on error robustness (like THPE, Proper Equilibrium) or solely on sequential rationality in non-zero-sum settings (SPE, Sequential Equilibrium). It operates orthogonally by providing a specific tie-breaking rule based on strategy structure (entropy) *after* primary objectives (consistent with SPE/minimax for the P-game) are met. It is perhaps closer in spirit to lexicographical refinements but uses a novel entropy-based score.
+
+\section{Related Work}
+*(Drafting with a defensive/humble tone)*
+The fields of game theory, equilibrium refinement, and computational game theory are vast, and this section provides only a brief and non-exhaustive overview of potentially related areas. Standard equilibrium concepts like Nash Equilibrium \cite{placeholder_nash}, Minimax \cite{placeholder_vonneumann}, and Subgame Perfect Equilibrium \cite{placeholder_selten_spe} form the foundation. Numerous refinements address equilibrium selection, including those based on robustness to errors like Trembling Hand Perfection \cite{placeholder_selten_thpe} and Proper Equilibrium \cite{placeholder_myerson}, or alternative reasoning processes like Quantal Response Equilibrium \cite{placeholder_qre}. Lexicographical preferences in games have also been studied \cite{placeholder_lexico_games}.
+
+Entropy concepts appear in various contexts, including decision theory under the Maximum Entropy principle \cite{placeholder_jaynes}, statistical mechanics models sometimes applied to games \cite{placeholder_statphys_games}, and entropy regularization techniques in optimization and reinforcement learning \cite{placeholder_entropy_rl}.
+
+While we have focused on the specific formulation of a weighted entropy balance for lexicographical tie-breaking in zero-sum extensive form games, derived from basic principles of entropy measurement, we acknowledge that similar mathematical structures or concepts might exist. The authors have performed a reasonable literature search but recognize the possibility of overlooking relevant prior work, perhaps in less common publications or adjacent fields. We would welcome pointers from the community to any closely related concepts.
+
+\section{Conclusion and Future Work}
+
+\subsection{Summary}
+We introduced Weighted Entropy Equilibrium (WEE), a novel refinement concept for finite two-player zero-sum games with perfect information. Based on lexicographically maximizing the primary outcome `P` and a weighted entropy balance score `T_w`, WEE exists and is unique. We showed its computation via backward induction and characterized the optimal strategy structure via a softmax distribution where the weights act as inverse temperatures. We also established WEE as the zero-perturbation limit of auxiliary games with combined payoffs (`P + ε T_w`).
+
+\subsection{Future Work}
+This work focuses specifically on finite extensive form games with perfect information and the `(P, T_w)` objective. Several interesting directions remain:
+\begin{itemize}
+    \item **Secondary Scores:** Formally extending the model to `(P, S, T_w)`.
+    \item **Imperfect Information Games:** Leveraging the limit characterization (Thm~\ref{thm:limit}) to define and potentially compute WEE analogues.
+    * **Heuristic Search:** Applying related finite-temperature concepts within MCTS or other search algorithms for large games.
+    \item **Alternative Measures:** Exploring different complexity/entropy measures for `T`.
+    * **Non-Zero-Sum Games:** Investigating potential extensions or related concepts.
+    \item **Specific Game Analyses:** Applying WEE (or heuristic versions) to complex games.
+\end{itemize}
+
+% --- Bibliography ---
+% Using basic bibliography for MVP
+\begin{thebibliography}{9}
+\bibitem{placeholder_vonneumann} J. von Neumann, O. Morgenstern, *Theory of Games and Economic Behavior*, Princeton University Press, 1944.
+\bibitem{placeholder_shannon_properties} C. E. Shannon, *A Mathematical Theory of Communication*, Bell System Technical Journal, 1948. (Or cite info theory textbook like Cover & Thomas).
+\bibitem{placeholder_osborne_rubinstein} M. J. Osborne, A. Rubinstein, *A Course in Game Theory*, MIT Press, 1994.
+\bibitem{placeholder_nash} J. F. Nash Jr., *Non-Cooperative Games*, Annals of Mathematics, 1951.
+\bibitem{placeholder_selten_spe} R. Selten, *Spieltheoretische Behandlung eines Oligopolmodells mit Nachfrageträgheit*, Zeitschrift für die gesamte Staatswissenschaft, 1965.
+\bibitem{placeholder_cover_thomas} T. M. Cover, J. A. Thomas, *Elements of Information Theory*, Wiley, 2006.
+\bibitem{placeholder_selten_thpe} R. Selten, *Reexamination of the perfectness concept for equilibrium points in extensive games*, International Journal of Game Theory, 1975.
+\bibitem{placeholder_myerson} R. B. Myerson, *Refinements of the Nash equilibrium concept*, International Journal of Game Theory, 1978.
+\bibitem{placeholder_lexico_limit} [Placeholder citation for limit representation of lexico preferences, e.g., Fishburn or multi-objective optimization literature].
+\bibitem{placeholder_qre} R. D. McKelvey, T. R. Palfrey, *Quantal Response Equilibria for Normal Form Games*, Games and Economic Behavior, 1995.
+\bibitem{placeholder_jaynes} E. T. Jaynes, *Information Theory and Statistical Mechanics*, Physical Review, 1957.
+\bibitem{placeholder_statphys_games} [Placeholder citation for stat phys / econophysics game models, if relevant].
+\bibitem{placeholder_entropy_rl} [Placeholder citation for entropy regularization in RL, e.g., Soft Actor-Critic].
+\bibitem{placeholder_lexico_games} [Placeholder citation for general lexicographical games].
+\bibitem{placeholder_repo} [Your Name/Link], *"entrolibrium" repository*, GitHub, 2025. *(Optional, cite the repo)*.
+\end{thebibliography}
+
+% --- Appendix (Optional - Empty for MVP) ---
+% \appendix
+% \section{Proof of Decomposition Invariance}
+% \section{Detailed Derivations}
+% \section{Tic-Tac-Toe Implementation Details}
+
+% --- Algorithm Placeholder ---
+% \begin{algorithm}
+% \caption{Backward Induction for WEE}\label{alg:backward_induction}
+% \begin{algorithmic}[1]
+% \Function{ComputeWEE}{node $h$, player $i$}
+%   % ... pseudocode ...
+% \EndFunction
+% \end{algorithmic}
+% \end{algorithm}
+
+
+\end{document}

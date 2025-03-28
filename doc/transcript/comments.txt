@@ -1,0 +1,5 @@
+Transcripts are created by expanding all messages and thinking parts,
+then ctrl+a and ctrl+c and after pasting manually deleting the menu stuff.
+
+Frequently, Gemini stopped responding without closing the Thinking part.
+At first I tended to click Redo, but later I just copied from last code/markdown block.

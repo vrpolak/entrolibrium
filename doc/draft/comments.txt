@@ -1,0 +1,5 @@
+
+The paper_3.tex file is the first one I tried to push to arXiv
+before I realized I am not endorsed for correct categories.
+
+Gemini kept writing it is version 1.5 Pro, I had to manually edit 2.5 Pro.

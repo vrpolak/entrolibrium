@@ -1,0 +1,20 @@
+Calculating EOS for Tic-Tac-Toe first move (Player X)...
+
+Max E[P] achievable by X = -0.000
+Multiple moves achieve max E[P] (9 moves). Calculating entropy-optimal distribution...
+
+Entropy Optimal Strategy (First Move Probabilities):
+Move | E[T_future] | Probability (p*)
+-----|-------------|-----------------
+ 0   |    0.965    |     0.12499    
+ 1   |    0.274    |     0.06261    
+ 2   |    0.965    |     0.12499    
+ 3   |    0.274    |     0.06261    
+ 4   |    1.657    |     0.24961    
+ 5   |    0.274    |     0.06261    
+ 6   |    0.965    |     0.12499    
+ 7   |    0.274    |     0.06261    
+ 8   |    0.965    |     0.12499    
+
+Overall E[T] for Player X from start: 3.04440
+  (Calculated as H(D*_root) + E[T_future | D*_root] = 2.08002 + 0.96438)
